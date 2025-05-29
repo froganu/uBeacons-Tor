@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Baliza de ultrasonidos Web</title>
+</head>
+<body>
+  <h1>Emisor de Baliza de ultrasonidos</h1>
+  <button id="startBeacon">Emitir Beacon</button>
+  <button id="stopBeacon">Detener Beacon</button>
+</body>
+<!-- Añade este botón después de los existentes -->
+<button id="downloadBeacon">Descargar uBeacon</button>
+
+    <script>
+
+        let audioBuffer; // Variable para almacenar el audio generado
+
+        document.getElementById("startBeacon").onclick = async function() {
+        const context = new OfflineAudioContext(1, 44100 * 2, 44100); // 2 segundos
+        const oscillator = context.createOscillator();
+        
+        // Configuración BPSK con datos 
+        const data = [1,0,1,1,0,1,0,0]; // ID binario: 10110100 → 180 decimal
+        let time = 0;
+        
+        data.forEach(bit => {
+            oscillator.frequency.setValueAtTime(
+            bit ? 19100 : 18900,
+            time
+            );
+            time += 0.08; // 80 ms por bit
+        });
+
+        oscillator.connect(context.destination);
+        oscillator.start();
+        audioBuffer = await context.startRendering(); // Renderiza a buffer
+        };
+
+        // Nuevo código para descarga (Search result [1][4])
+        document.getElementById("downloadBeacon").onclick = () => {
+        const wav = audioBufferToWav(audioBuffer);
+        const blob = new Blob([wav], { type: 'audio/wav' });
+        const url = URL.createObjectURL(blob);
+        
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'uBeacon.wav';
+        a.click();
+        };
+
+        // Conversor a WAV (Search result [2])
+        function audioBufferToWav(buffer) {
+        const numChannels = buffer.numberOfChannels;
+        const length = buffer.length * numChannels * 2 + 44;
+        const arrayBuffer = new ArrayBuffer(length);
+        
+        // Cabecera WAV (44 bytes)
+        const view = new DataView(arrayBuffer);
+        writeString(view, 0, 'RIFF');
+        view.setUint32(4, 36 + buffer.length * numChannels * 2, true);
+        writeString(view, 8, 'WAVE');
+        writeString(view, 12, 'fmt ');
+        view.setUint32(16, 16, true);
+        view.setUint16(20, 1, true);
+        view.setUint16(22, numChannels, true);
+        view.setUint32(24, buffer.sampleRate, true);
+        view.setUint32(28, buffer.sampleRate * 2 * numChannels, true);
+        view.setUint16(32, numChannels * 2, true);
+        view.setUint16(34, 16, true);
+        writeString(view, 36, 'data');
+        view.setUint32(40, buffer.length * numChannels * 2, true);
+
+        // Datos PCM (Search result [4])
+        let offset = 44;
+        for (let i = 0; i < buffer.length; i++) {
+            for (let channel = 0; channel < numChannels; channel++) {
+            const sample = Math.max(-1, Math.min(1, buffer.getChannelData(channel)[i]));
+            view.setInt16(offset, sample * 0x7FFF, true);
+            offset += 2;
+            }
+        }
+        return arrayBuffer;
+        }
+
+        function writeString(view, offset, string) {
+        for (let i = 0; i < string.length; i++) {
+            view.setUint8(offset + i, string.charCodeAt(i));
+        }
+        }
+    </script>
+
+</html>
