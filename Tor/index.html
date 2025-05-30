@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Baliza de ultrasonidos Web</title>
+</head>
+<body>
+  <h1>Emisor de Baliza de ultrasonidos</h1>
+  <button id="startBeacon">Emitir Beacon</button>
+  <button id="stopBeacon">Detener Beacon</button>
+  <button id="downloadBeacon">Descargar uBeacon</button>
+</body>
+
+<script>
+    let audioBuffer; // Para la descarga
+
+    // Frecuencias
+    const FREQ_0 = 19200;
+    const FREQ_1 = 19500;
+    const BIT_DURATION = 0.08; // 80 ms por bit
+    const DATA = [1,0,1,1,0,1,0,0]; // 10110100
+
+    // Emitir baliza por altavoz
+    document.getElementById("startBeacon").onclick = function() {
+        const context = new AudioContext();
+        const oscillator = context.createOscillator();
+        const gain = context.createGain();
+
+        let time = context.currentTime;
+
+        oscillator.connect(gain);
+        gain.connect(context.destination);
+        gain.gain.value = 0.8;
+
+        DATA.forEach(bit => {
+            oscillator.frequency.setValueAtTime(
+                bit ? FREQ_1 : FREQ_0,
+                time
+            );
+            time += BIT_DURATION;
+        });
+
+        oscillator.start();
+        oscillator.stop(time);
+
+        oscillator.onended = () => {
+            context.close();
+        };
+    };
+
+    // Generar WAV para descarga (usando OfflineAudioContext)
+    document.getElementById("downloadBeacon").onclick = async () => {
+        const sampleRate = 44100;
+        const context = new OfflineAudioContext(1, sampleRate * (BIT_DURATION * DATA.length + 0.1), sampleRate);
+        const oscillator = context.createOscillator();
+        let time = 0;
+        DATA.forEach(bit => {
+            oscillator.frequency.setValueAtTime(
+                bit ? FREQ_1 : FREQ_0,
+                time
+            );
+            time += BIT_DURATION;
+        });
+        oscillator.connect(context.destination);
+        oscillator.start();
+        oscillator.stop(time);
+        audioBuffer = await context.startRendering();
+
+        const wav = audioBufferToWav(audioBuffer);
+        const blob = new Blob([wav], { type: 'audio/wav' });
+        const url = URL.createObjectURL(blob);
+
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'uBeacon.wav';
+        a.click();
+    };
+
+    // Conversor a WAV
+    function audioBufferToWav(buffer) {
+        const numChannels = buffer.numberOfChannels;
+        const length = buffer.length * numChannels * 2 + 44;
+        const arrayBuffer = new ArrayBuffer(length);
+
+        // Cabecera WAV (44 bytes)
+        const view = new DataView(arrayBuffer);
+        writeString(view, 0, 'RIFF');
+        view.setUint32(4, 36 + buffer.length * numChannels * 2, true);
+        writeString(view, 8, 'WAVE');
+        writeString(view, 12, 'fmt ');
+        view.setUint32(16, 16, true);
+        view.setUint16(20, 1, true);
+        view.setUint16(22, numChannels, true);
+        view.setUint32(24, buffer.sampleRate, true);
+        view.setUint32(28, buffer.sampleRate * 2 * numChannels, true);
+        view.setUint16(32, numChannels * 2, true);
+        view.setUint16(34, 16, true);
+        writeString(view, 36, 'data');
+        view.setUint32(40, buffer.length * numChannels * 2, true);
+
+        // Datos PCM
+        let offset = 44;
+        for (let i = 0; i < buffer.length; i++) {
+            for (let channel = 0; channel < numChannels; channel++) {
+                const sample = Math.max(-1, Math.min(1, buffer.getChannelData(channel)[i]));
+                view.setInt16(offset, sample * 0x7FFF, true);
+                offset += 2;
+            }
+        }
+        return arrayBuffer;
+    }
+
+    function writeString(view, offset, string) {
+        for (let i = 0; i < string.length; i++) {
+            view.setUint8(offset + i, string.charCodeAt(i));
+        }
+    }
+</script>
+
+</html>

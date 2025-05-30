@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Última IP y Localización</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        #ip { font-size: 1.5em; margin-bottom: 16px; }
+        #map { height: 400px; width: 100%; }
+    </style>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+</head>
+<body>
+    <h1>Última IP y Localización Recibida</h1>
+    <div id="ip">Esperando datos...</div>
+    <div id="map"></div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script>
+        let map, marker;
+
+        function showMap(lat, lon) {
+            if (!map) {
+                map = L.map('map').setView([lat, lon], 15);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenStreetMap contributors'
+                }).addTo(map);
+                marker = L.marker([lat, lon]).addTo(map);
+            } else {
+                map.setView([lat, lon], 15);
+                marker.setLatLng([lat, lon]);
+            }
+        }
+
+        async function fetchData() {
+            try {
+                const res = await fetch('/api/last');
+                if (!res.ok) return;
+                const data = await res.json();
+                if (data && data.ip_address && data.latitude && data.longitude) {
+                    document.getElementById('ip').textContent = "IP: " + data.ip_address;
+                    showMap(data.latitude, data.longitude);
+                } else {
+                    document.getElementById('ip').textContent = "Esperando datos...";
+                }
+            } catch (e) {
+                document.getElementById('ip').textContent = "Error obteniendo datos";
+            }
+        }
+
+        // Polling cada 2 segundos
+        setInterval(fetchData, 2000);
+        fetchData();
+    </script>
+</body>
+</html>
