@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Video privado</title>
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            background: #000;
+        }
+        body {
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+        }
+        video {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100vw;
+            height: 100vh;
+            object-fit: cover; /* o "contain" si prefieres ver todo el vídeo con barras negras */
+            background: #000;
+        }
+    </style>
+</head>
+<body>
+    <video src="video_infectado.mp4" controls autoplay></video>
+</body>
+</html>

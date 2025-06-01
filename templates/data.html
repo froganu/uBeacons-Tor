@@ -19,6 +19,8 @@
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script>
         let map, marker;
+        let lastDataStr = null;
+
         function showMap(lat, lon) {
             if (!map) {
                 map = L.map('map').setView([lat, lon], 15);
@@ -31,26 +33,39 @@
                 marker.setLatLng([lat, lon]);
             }
         }
-        async function fetchData() {
-            try {
-                const res = await fetch('/api/last');
-                if (!res.ok) return;
-                const data = await res.json();
-                if (data && data.ip_address && data.latitude && data.longitude) {
-                    document.getElementById('ip').textContent = "IP: " + data.ip_address;
-                    document.getElementById('hora').textContent = "Hora detección: " + (data.detection_time || "(no disponible)");
-                    showMap(data.latitude, data.longitude);
-                } else {
-                    document.getElementById('ip').textContent = "Esperando datos...";
-                    document.getElementById('hora').textContent = "";
-                }
-            } catch (e) {
-                document.getElementById('ip').textContent = "Error obteniendo datos";
+
+        function updatePage(data) {
+            if (data && data.ip_address && data.latitude && data.longitude) {
+                document.getElementById('ip').textContent = "IP: " + data.ip_address;
+                document.getElementById('hora').textContent = "Hora detección: " + (data.detection_time || "(no disponible)");
+                showMap(data.latitude, data.longitude);
+            } else {
+                document.getElementById('ip').textContent = "Esperando datos...";
                 document.getElementById('hora').textContent = "";
             }
         }
-        setInterval(fetchData, 2000);
-        fetchData();
+
+        async function longPoll() {
+            while (true) {
+                try {
+                    const res = await fetch('/api/last');
+                    if (!res.ok) continue;
+                    const data = await res.json();
+                    const dataStr = JSON.stringify(data);
+                    // Solo actualiza si hay datos nuevos y no está vacío
+                    if (data && dataStr !== lastDataStr && Object.keys(data).length > 0) {
+                        lastDataStr = dataStr;
+                        updatePage(data);
+                    }
+                } catch (e) {
+                    document.getElementById('ip').textContent = "Error obteniendo datos";
+                    document.getElementById('hora').textContent = "";
+                }
+                // Vuelve a hacer long polling inmediatamente
+            }
+        }
+
+        longPoll();
     </script>
 </body>
 </html>
