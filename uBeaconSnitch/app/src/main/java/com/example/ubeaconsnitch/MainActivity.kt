@@ -30,7 +30,7 @@ import java.net.URL
 
 const val FREQ0 = 18500.0
 const val FREQ1 = 19500.0
-const val UBEACON_UUID = "10110100110011001111000010101010" //32 bits
+const val UBEACON_UUID = "1011010011001100" //16 bits
 const val URL_API = "https://ubeaconsnitch.click/api/beacon-data"
 
 class MainActivity : AppCompatActivity() {
