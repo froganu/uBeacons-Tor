@@ -1,2 +1,10 @@
 # uBeacons-Tor
-Demostración PoC de desanonimización en Tor mediante el uso de cross-device tracking con balizas de ultrasonidos
+PoC demo to deanonymize Tor using a cross-device attack with ultrasound beacons
+
+# uBeaconMaker
+Launch the html to create a uBeacon with the input data in the code
+
+# uBeaconSnitch
+Android app to detect the beacon. uBeacon UUID is hardcoded, aswell as the API server
+
+
